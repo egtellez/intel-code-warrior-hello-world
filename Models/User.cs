@@ -1,0 +1,111 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Text;
+using System.Security.Claims;
+using dvcsharp_core_api.Data;
+using Microsoft.Extensions.Configuration;
+
+namespace dvcsharp_core_api.Models
+{
+   public class User
+   {
+	  private readonly IConfiguration _configuration;
+      private readonly string _roleUser;
+      private readonly string _roleSupport;
+      private readonly string _roleAdministrator;
+      private readonly string _tokenSecret;
+	  private readonly string _issuer;
+	  private readonly string _audience;
+
+      public int ID { get; set; }
+	  
+	  public User(IConfiguration configuration)
+	  {
+		 _configuration = configuration;
+	  }
+
+      [Required]
+      public string name { get; set; }
+      [Required]
+      public string email { get; set; }
+      [Required]
+      public string role { get; set; }
+      [Required]
+      [System.Runtime.Serialization.IgnoreDataMember]
+      public string password { get; set; }
+      [Required]
+      public DateTime createdAt { get; set; }
+      [Required]
+      public DateTime updatedAt { get; set; }
+
+      public void updatePassword(string password)
+      {
+         this.password = getHashedPassword(password);
+      }
+
+      public string createAccessToken()
+      {
+         string secret = _tokenSecret;
+         string issuer = _issuer;
+         string audience = _audience;
+
+         var claims = new[]
+         {
+            new Claim("name", this.email),
+            new Claim("role", this.role)
+         };
+
+         var signingKey = new Microsoft.IdentityModel.
+            Tokens.SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+
+         var creds = new Microsoft.IdentityModel.
+            Tokens.SigningCredentials(signingKey, 
+               Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+
+         var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            expires: DateTime.Now.AddMinutes(30),
+            claims: claims,
+            signingCredentials: creds
+         );
+
+         return (new System.IdentityModel.Tokens.
+            Jwt.JwtSecurityTokenHandler().WriteToken(token));
+      }
+
+      private static string getHashedPassword(string password)
+      {
+         var sha256 =  SHA256.Create();
+         var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+         return BitConverter.ToString(hash).ToLowerInvariant();
+      }
+
+      public static AuthorizationResponse authorizeCreateAccessToken(GenericDataContext _context, 
+         AuthorizationRequest authorizationRequest)
+      {
+         AuthorizationResponse response = null;
+
+         User user = _context.Users.
+            Where(b => b.email == authorizationRequest.email).
+            FirstOrDefault();
+         
+         if(user == null) {
+            return response;
+         }
+
+         if(getHashedPassword(authorizationRequest.password) != user.password) {
+            return response;
+         }
+
+         response = new AuthorizationResponse();
+         response.role = user.role;
+         response.accessToken = user.createAccessToken();
+
+         return response;
+      }
+   }
+}
