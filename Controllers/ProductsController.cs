@@ -70,7 +70,7 @@ namespace dvcsharp_core_api
 
          var query = $"SELECT * From Products WHERE name LIKE '%{keyword}%' OR description LIKE '%{keyword}%'";
          var products = _context.Products
-            .FromSql(query)
+			.Where(p => p.Name.Contains(keyword) || p.Name.Contains(keyword))
             .ToList();
 
          return Ok(products);
