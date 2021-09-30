@@ -11,10 +11,10 @@ namespace dvcsharp_core_api.Models
 {
    public class User
    {
-      public const string RoleUser = "User";
-      public const string RoleSupport = "Support";
-      public const string RoleAdministrator = "Administrator";
-      public const string TokenSecret = "f449a71cff1d56a122c84fa478c16af9075e5b4b8527787b56580773242e40ce";
+      private const string RoleUser = "User";
+      private const string RoleSupport = "Support";
+      private const string RoleAdministrator = "Administrator";
+      private const string TokenSecret = "f449a71cff1d56a122c84fa478c16af9075e5b4b8527787b56580773242e40ce";
 
       public int ID { get; set; }
 
@@ -70,10 +70,9 @@ namespace dvcsharp_core_api.Models
 
       private static string getHashedPassword(string password)
       {
-         var md5 = MD5.Create();
-         var hash = md5.ComputeHash(System.Text.Encoding.ASCII.GetBytes(password));
-
-         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+		 passwordBytes = Encoding.ASCII.GetBytes(password);
+		 var base64Password = Convert.ToBase64String(passwordBytes);
+         return base64Password;
       }
 
       public static AuthorizationResponse authorizeCreateAccessToken(GenericDataContext _context, 
